@@ -1,0 +1,94 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+use IEEE.MATH_REAL.ALL;
+
+entity tb_top_system is
+end tb_top_system;
+
+architecture sim of tb_top_system is
+
+    -- DUT ports
+    signal clk        : std_logic := '0';
+    signal rst        : std_logic := '1';
+
+    signal bram_clk   : std_logic;
+    signal bram_rst   : std_logic;
+    signal bram_en    : std_logic;
+    signal bram_we    : std_logic_vector(3 downto 0);
+    signal bram_addr  : std_logic_vector(7 downto 0);
+    signal bram_rdata : std_logic_vector(31 downto 0);
+
+    signal cs_dac     : std_logic;
+    signal sck_dac    : std_logic;
+    signal dac_out    : std_logic;
+    
+    --signal data_out_tb : std_logic_vector(11 downto 0);
+
+    -- Fake BRAM (256 x 32-bit)
+    type ram_type is array (0 to 255) of std_logic_vector(31 downto 0);
+    signal RAM : ram_type := (others => (others => '0'));
+
+begin
+
+    --------------------------------------------------------------------
+    -- Clock generator (100 MHz ? 10ns period)
+    --------------------------------------------------------------------
+    clk <= not clk after 5 ns;
+
+    --------------------------------------------------------------------
+    -- Reset pulse
+    --------------------------------------------------------------------
+    process
+    begin
+        rst <= '1';
+        wait for 100 ns;
+        rst <= '0';
+        wait;
+    end process;
+
+    --------------------------------------------------------------------
+    -- BRAM SIMULATION (Port B READ)
+    --------------------------------------------------------------------
+    process(bram_clk)
+    begin
+        if rising_edge(bram_clk) then
+            if bram_en = '1' then
+                bram_rdata <= RAM(to_integer(unsigned(bram_addr)));
+            end if;
+        end if;
+    end process;
+
+    --------------------------------------------------------------------
+    -- Generate SINE LUT values
+    --------------------------------------------------------------------
+    init_lut : process
+        variable value : integer;
+    begin
+        for i in 0 to 255 loop
+            value := integer((4095.0/2.0) * (1.0 + sin(2.0 * math_pi * real(i) / 256.0)));
+            RAM(i) <= std_logic_vector(to_unsigned(value, 32));
+        end loop;
+        wait;
+    end process;
+
+    --------------------------------------------------------------------
+    -- DUT instantiation
+    --------------------------------------------------------------------
+    uut : entity work.top_system
+        port map (
+            clk        => clk,
+            rst        => rst,
+            bram_clk   => bram_clk,
+            bram_rst   => bram_rst,
+            bram_en    => bram_en,
+            bram_we    => bram_we,
+            bram_addr  => bram_addr,
+            bram_rdata => bram_rdata,
+            cs_dac     => cs_dac,
+            sck_dac    => sck_dac,
+            --data_out_tb => data_out_tb,
+            dac_out    => dac_out
+        );
+
+end sim;
