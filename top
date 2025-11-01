@@ -1,0 +1,74 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity top_system is
+    Port (
+        clk        : in  std_logic;   -- 100Mhz
+        rst        : in  std_logic;
+        
+        bram_clk    : out std_logic; -- 100Mhz
+        bram_rst    : out std_logic;
+        bram_en     : out std_logic;
+        bram_we     : out std_logic_vector(3 downto 0);
+        bram_addr   : out std_logic_vector(31 downto 0);
+        bram_rdata  : in  std_logic_vector(31 downto 0);
+
+        
+        cs_dac     : out std_logic;
+        sck_dac    : out std_logic;
+        dac_out    : out std_logic
+        -- tb
+       -- data_out_tb     : out std_logic_vector(11 downto 0)
+    );
+end top_system;
+
+architecture Behavioral of top_system is
+    --------------------------------------------------------------------
+    -- Internal signals
+    --------------------------------------------------------------------
+    signal lut_out     : std_logic_vector(11 downto 0); -- data t? LUT sin
+    signal fsclk       : std_logic;
+   
+begin
+    --------------------------------------------------------------------
+    -- LUT sine generator instance
+    --------------------------------------------------------------------
+    
+    IC1 : entity work.tao_xung_sclk_lut
+      port map (
+        clk => clk,
+        sclk_output => fsclk
+      );
+      
+    u_lut: entity work.sine_lut
+        port map (
+            clk         =>   fsclk, -- 25Mhz
+            rst         =>   rst,
+            bram_clk    =>   bram_clk,
+            bram_rst    =>   bram_rst,
+            bram_en     =>   bram_en,
+            bram_addr   =>   bram_addr,
+            bram_rdata  =>   bram_rdata,
+            data_o      =>   lut_out
+        );
+        
+       --data_out_tb <= lut_out;
+   
+    --------------------------------------------------------------------
+    -- DAC instance
+    --------------------------------------------------------------------
+    u_dac: entity work.spi_dac_sine
+        port map (
+            clk_100M => clk,
+            reset_n  => rst,
+            data_in  => lut_out,
+            
+            dac_cs_n => cs_dac,
+            dac_sck  => sck_dac,
+            dac_sdi  => dac_out
+        );
+        
+            bram_we <= "0000"; -- ko ghi
+            bram_rst <= rst;
+end Behavioral;
