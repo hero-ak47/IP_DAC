@@ -1,0 +1,46 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity sine_lut is
+    Port (
+        clk         : in  std_logic; -- 25Mhz
+        rst         : in  std_logic;
+
+        -- BRAM Port B interface
+        bram_clk    : out std_logic; -- 25Mhz
+        bram_rst    : out std_logic;
+        bram_en     : out std_logic;
+        bram_addr   : out std_logic_vector(31 downto 0);
+        bram_rdata  : in  std_logic_vector(31 downto 0);
+
+        -- Output to DAC
+        data_o      : out std_logic_vector(11 downto 0)
+    );
+end sine_lut;
+architecture Behavioral of sine_lut is
+    signal addr_reg : unsigned(31 downto 0) := (others => '0');
+begin
+
+    -- Địa chỉ LUT tăng dần
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if rst = '1' then
+                addr_reg <= (others => '0');
+            else
+                addr_reg <= addr_reg + 1;
+            end if;
+        end if;
+    end process;
+
+    -- Kết nối Port B của BRAM
+    bram_clk   <= clk;
+    bram_rst   <= rst;
+    bram_en    <= '1';
+    bram_addr  <= std_logic_vector(addr_reg);
+
+    -- Lấy 12 bit thấp đưa sang DAC
+    data_o <= bram_rdata(11 downto 0);
+
+end Behavioral;
